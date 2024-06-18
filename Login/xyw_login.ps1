@@ -13,7 +13,23 @@ Param(
     # 获取MAC和IP的网卡名称[为空则使用自定义]
     $ADAPTERNAME = '以太网'
 )
+function Output_Log {
+    param (
+        [string]$outStr,
+        [string]$fileName
+    )
+    $fullDateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    "====== $fullDateTime ======
+$outStr
+============== End ==============" | Tee-Object -Append -FilePath "$fileName.log"
+}
 
+#=======================================================================
+if (!($ACCOUNT -and $PASSWORD)) {
+    $outstr = "缺少账号或密码，脚本将退出."
+    Output_Log -outStr $outstr -fileName "Login_Error_($ACCOUNT)"
+    exit
+}
 #=======================================================================
 # 使用变量存储获取适配器的结果
 $adapter = Get-NetAdapter -Name $ADAPTERNAME
@@ -42,14 +58,11 @@ else {
         $ipAddress = $IP
     }
     else {
-        Write-Output "缺少参数，脚本将退出."
+        $outstr = "缺少MAC或IP，脚本将退出."
+        Output_Log -outStr $outstr -fileName "Login_Error_($ACCOUNT)"
         exit
     }
 }
-
-Write-Output "网卡: $adapterName"
-Write-Output "MAC:  $macAddress"
-Write-Output "IP:   $ipAddress"
 
 # 设置请求的基础URL
 $baseURL = "http://10.0.10.252:801/eportal/?c=Portal&a=login&login_method=1&wlan_ac_ip=10.128.255.142"
@@ -69,4 +82,8 @@ $response = Invoke-RestMethod -Uri $fullURL -Method GET
 $decodedResponse = [regex]::Unescape($response)
 
 # 显示解码后的文本
-Write-Output $decodedResponse
+$outstr = "网卡: $adapterName
+MAC:  $macAddress
+IP:   $ipAddress
+结果: $decodedResponse"
+Output_Log -outStr $outstr -fileName "Login_Info_($ACCOUNT-$macAddress)"
